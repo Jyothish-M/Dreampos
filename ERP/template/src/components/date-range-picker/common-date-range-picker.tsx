@@ -1,0 +1,109 @@
+import React, { useState, useRef } from 'react';
+import { DatePicker, Dropdown, Input } from 'antd';
+import dayjs from 'dayjs';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+import localeData from 'dayjs/plugin/localeData';
+
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(customParseFormat);
+dayjs.extend(localeData);
+
+const { RangePicker } = DatePicker;
+const dateFormat = 'YYYY/MM/DD';
+
+interface CommonDateRangePickerProps {
+  onRangeChange?: (startDate: string, endDate: string) => void;
+}
+
+const CommonDateRangePicker: React.FC<CommonDateRangePickerProps> = ({ onRangeChange }) => {
+  const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(6, 'days'),
+    dayjs(),
+  ]);
+  const [customVisible, setCustomVisible] = useState(false);
+  const rangeRef = useRef<any>(null);
+
+  const predefinedRanges: Record<string, [dayjs.Dayjs, dayjs.Dayjs]> = {
+    Today: [dayjs(), dayjs()],
+    Yesterday: [dayjs().subtract(1, 'day'), dayjs().subtract(1, 'day')],
+    'Last 7 Days': [dayjs().subtract(6, 'day'), dayjs()],
+    'Last 30 Days': [dayjs().subtract(29, 'day'), dayjs()],
+    'This Month': [dayjs().startOf('month'), dayjs().endOf('month')],
+    'Last Month': [
+      dayjs().subtract(1, 'month').startOf('month'),
+      dayjs().subtract(1, 'month').endOf('month'),
+    ],
+  };
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    if (key === 'Custom Range') {
+      setCustomVisible(true);
+      // Trigger calendar popup manually
+      setTimeout(() => rangeRef.current?.focus(), 0);
+    } else {
+      const newDates = predefinedRanges[key];
+      setDates(newDates);
+      setCustomVisible(false);
+      if (onRangeChange) {
+        onRangeChange(newDates[0].format('YYYY-MM-DD'), newDates[1].format('YYYY-MM-DD'));
+      }
+    }
+  };
+
+  const handleCustomChange = (value: any) => {
+    if (value) {
+      setDates(value);
+      setCustomVisible(false);
+      if (onRangeChange) {
+        onRangeChange(value[0].format('YYYY-MM-DD'), value[1].format('YYYY-MM-DD'));
+      }
+    }
+  };
+
+  const menuProps = {
+    items: [
+      ...Object.keys(predefinedRanges).map(label => ({
+        key: label,
+        label,
+      })),
+      { type: 'divider' as const },
+      { key: 'Custom Range', label: 'Custom Range' },
+    ],
+    onClick: handleMenuClick,
+  };
+
+  const displayValue = `${dates[0].format(dateFormat)} - ${dates[1].format(dateFormat)}`;
+
+  return (
+    <div>
+      <Dropdown menu={menuProps} trigger={['click']}>
+        <Input
+          readOnly
+          value={displayValue}
+          className=""
+        />
+      </Dropdown>
+
+      {/* Hidden RangePicker - purely for calendar popup */}
+      {customVisible && (
+        <RangePicker
+          open
+          ref={rangeRef}
+          onChange={handleCustomChange}
+          format={dateFormat}
+          value={dates}
+          allowClear={false}
+          style={{ position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }}
+          onOpenChange={(open:any) => {
+            if (!open) setCustomVisible(false);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default CommonDateRangePicker;
