@@ -6,24 +6,26 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure uploads directories exist
+// Ensure uploads directories exist (graceful on read-only filesystems like Vercel)
+const ensureDir = (dir) => { try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) {} };
+
 const storeUploadsDir = path.join(__dirname, "../../uploads/stores");
-if (!fs.existsSync(storeUploadsDir)) fs.mkdirSync(storeUploadsDir, { recursive: true });
+ensureDir(storeUploadsDir);
 
 const warehouseUploadsDir = path.join(__dirname, "../../uploads/warehouses");
-if (!fs.existsSync(warehouseUploadsDir)) fs.mkdirSync(warehouseUploadsDir, { recursive: true });
+ensureDir(warehouseUploadsDir);
 
 const customerUploadsDir = path.join(__dirname, "../../uploads/customers");
-if (!fs.existsSync(customerUploadsDir)) fs.mkdirSync(customerUploadsDir, { recursive: true });
+ensureDir(customerUploadsDir);
 
 const brandUploadsDir = path.join(__dirname, "../../uploads/brands");
-if (!fs.existsSync(brandUploadsDir)) fs.mkdirSync(brandUploadsDir, { recursive: true });
+ensureDir(brandUploadsDir);
 
 const productUploadsDir = path.join(__dirname, "../../uploads/products");
-if (!fs.existsSync(productUploadsDir)) fs.mkdirSync(productUploadsDir, { recursive: true });
+ensureDir(productUploadsDir);
 
 const csvUploadsDir = path.join(__dirname, "../../uploads/csv");
-if (!fs.existsSync(csvUploadsDir)) fs.mkdirSync(csvUploadsDir, { recursive: true });
+ensureDir(csvUploadsDir);
 
 // Common Storage Configuration
 const createStorage = (uploadDir) => multer.diskStorage({
