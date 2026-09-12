@@ -43,13 +43,24 @@ const app = express();
 connectDB();
 
 // Middleware
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://dreampos-cyan.vercel.app",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || origin.startsWith("http://localhost")) {
-      callback(null, true);
-    } else {
-      callback(null, process.env.FRONTEND_URL || "http://localhost:5173");
-    }
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow localhost
+    if (origin.startsWith("http://localhost")) return callback(null, true);
+    // Allow any vercel.app subdomain
+    if (origin.endsWith(".vercel.app")) return callback(null, true);
+    // Allow explicitly listed origins
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(null, false);
   },
   credentials: true
 }));
