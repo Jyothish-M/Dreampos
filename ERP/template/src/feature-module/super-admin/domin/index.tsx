@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import html2pdf from "html2pdf.js";
 import { Link } from "react-router-dom";
 import CommonFooter from "../../../components/footer/commonFooter";
-import TableTopHead from "../../../components/table-top-head";
+
 import PrimeDataTable from "../../../components/data-table";
 import { company01 } from "../../../utils/imagepath";
 import SearchFromApi from "../../../components/data-table/search";
@@ -13,7 +13,7 @@ import RefreshIcon from "../../../components/tooltip-content/refresh";
 import CollapesIcon from "../../../components/tooltip-content/collapes";
 const Domain = () => {
   const [listData, setListData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalRecords, setTotalRecords] = useState<any>(0);
   const [rows, setRows] = useState<number>(10);
@@ -198,7 +198,7 @@ const Domain = () => {
   };
 
   const exportToPDF = () => {
-    const element = document.querySelector('.table-responsive');
+    const element = document.querySelector('.table-responsive') as HTMLElement;
     if (element) {
       html2pdf().from(element).save('domains.pdf');
     }

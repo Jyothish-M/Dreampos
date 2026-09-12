@@ -1,7 +1,6 @@
 import PrimeDataTable from "../../components/data-table";
 import SearchFromApi from "../../components/data-table/search";
-import DeleteModal from "../../components/delete-modal";
-import  { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { StockService } from "../services/stock.service";
 import { WarehouseService } from "../services/warehouse.service";
@@ -15,7 +14,7 @@ import CommonFooter from "../../components/footer/commonFooter";
 const ManageStock = () => {
   const [listData, setListData] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalRecords, setTotalRecords] = useState<any>(0);
+  const [_totalRecords, setTotalRecords] = useState<any>(0);
   const [rows, setRows] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
@@ -35,13 +34,6 @@ const ManageStock = () => {
   const [addStore, setAddStore] = useState<any>(null);
   const [addProduct, setAddProduct] = useState<any>(null);
   const [addQuantity, setAddQuantity] = useState<number>(1);
-
-  // Edit Stock form state
-  const [editId, setEditId] = useState<string>("");
-  const [editWarehouse, setEditWarehouse] = useState<any>(null);
-  const [editStore, setEditStore] = useState<any>(null);
-  const [editProduct, setEditProduct] = useState<any>(null);
-  const [editQuantity, setEditQuantity] = useState<number>(0);
 
   // Delete state
   const [deleteId, setDeleteId] = useState<string>("");

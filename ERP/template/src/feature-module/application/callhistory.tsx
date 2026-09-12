@@ -10,7 +10,7 @@ import { ApplicationService } from "../services/application.service";
 
 const Callhistory = () => {
   const [listData, setListData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalRecords, setTotalRecords] = useState<any>(0);
   const [rows, setRows] = useState<number>(10);

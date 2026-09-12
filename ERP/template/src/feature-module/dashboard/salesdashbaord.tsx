@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Chart from "react-apexcharts";
 import { all_routes } from "../../routes/all_routes";

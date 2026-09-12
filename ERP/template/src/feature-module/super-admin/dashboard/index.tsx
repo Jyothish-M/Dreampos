@@ -14,12 +14,12 @@ const SuperAdminDashboard = () => {
   const routes = all_routes;
 
   // ── Backend State & Loading ──────────────────────────────────────────────────
-  const [summaryData, setSummaryData] = useState<any>(null);
+  const [_summaryData, setSummaryData] = useState<any>(null);
   const [stores, setStores] = useState<any[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [_recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [expiredProducts, setExpiredProducts] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{start: string, end: string} | null>(null);
   const [companiesFilter, setCompaniesFilter] = useState("This Week");
   const [revenueFilter, setRevenueFilter] = useState("2025");

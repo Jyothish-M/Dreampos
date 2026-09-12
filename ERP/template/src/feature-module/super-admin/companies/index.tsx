@@ -18,7 +18,7 @@ type PasswordField = "password" | "confirmPassword";
 
 const Companies = () => {
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [rows, setRows] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);

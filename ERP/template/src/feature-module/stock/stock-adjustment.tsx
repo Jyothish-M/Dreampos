@@ -383,6 +383,7 @@ const StockAdjustment = () => {
                   setRows={setRows}
                   currentPage={currentPage}
                   setCurrentPage={setCurrentPage}
+                  totalRecords={totalRecords}
                   selectionMode="checkbox"
                   selection={selectedProducts}
                   onSelectionChange={(e: any) => setSelectedProducts(e.value)}

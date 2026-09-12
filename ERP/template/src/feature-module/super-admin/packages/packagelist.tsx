@@ -15,7 +15,7 @@ import Swal from 'sweetalert2';
 
 const Packages = () => {
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [rows, setRows] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
@@ -205,7 +205,7 @@ const Packages = () => {
   };
 
   const exportToPDF = () => {
-    const element = document.querySelector('.table-responsive');
+    const element = document.querySelector('.table-responsive') as HTMLElement;
     if (element) {
       html2pdf().from(element).save('packages.pdf');
     }

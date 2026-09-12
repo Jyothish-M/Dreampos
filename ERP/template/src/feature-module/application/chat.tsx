@@ -9,25 +9,15 @@ import RefreshIcon from "../../components/tooltip-content/refresh";
 import CollapesIcon from "../../components/tooltip-content/collapes";
 import {
   avatar14,
-  avatar19,
-  avatar20,
-  avatar21,
-  avatar22,
-  avatar23,
   downloadImg,
   emonji02,
-  emonji03,
   emonji05,
   emonji06,
   emonji07,
   emonji08,
-  emonji09,
-  emonji10,
   scanners,
   stockImg02,
   deleteImg,
-  user01,
-  user09,
   user49,
 } from "../../utils/imagepath";
 

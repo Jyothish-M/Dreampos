@@ -12,7 +12,7 @@ import { ApplicationService } from "../services/application.service";
 
 const Contacts = () => {
   const [listData, setListData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalRecords, setTotalRecords] = useState<any>(0);
   const [rows, setRows] = useState<number>(10);
@@ -58,7 +58,7 @@ const Contacts = () => {
     });
   };
 
-  const [selectedContactType, setSelectedContactType] = useState(null);
+  const [selectedContactType, setSelectedContactType] = useState<any>(null);
 
   const columns = [
     {

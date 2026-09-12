@@ -11,7 +11,7 @@ import RefreshIcon from "../../components/tooltip-content/refresh";
 import CollapesIcon from "../../components/tooltip-content/collapes";
 import { avatar_02 } from "../../utils/imagepath";
 import { ApplicationService } from "../services/application.service";
-const emptyColumns = {
+const emptyColumns: Record<string, { title: string, tasks: any[] }> = {
   column1: { title: "New", tasks: [] },
   column2: { title: "Inprogress", tasks: [] },
   column3: { title: "On-hold", tasks: [] },

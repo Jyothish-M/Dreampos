@@ -12,11 +12,11 @@ import { InvoiceService } from '../../services/invoice.service';
 
 const PurchaseTransaction = () => {
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [rows, setRows] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
-  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
+  const [selectedProducts, _setSelectedProducts] = useState<any[]>([]);
   const [filterMethod, setFilterMethod] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterSort, setFilterSort] = useState<string>("Recently Added");
@@ -203,7 +203,7 @@ const PurchaseTransaction = () => {
   };
 
   const exportToPDF = () => {
-    const element = document.querySelector('.table-responsive');
+    const element = document.querySelector('.table-responsive') as HTMLElement;
     if (element) {
       html2pdf().from(element).save('transactions.pdf');
     }

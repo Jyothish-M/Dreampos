@@ -14,7 +14,7 @@ import { InvoiceService } from '../../services/invoice.service';
 
 const Subscription = () => {
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [rows, setRows] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
@@ -514,7 +514,7 @@ const Subscription = () => {
   };
 
   const exportToPDF = () => {
-    const element = document.querySelector('.table-responsive');
+    const element = document.querySelector('.table-responsive') as HTMLElement;
     if (element) {
       html2pdf().from(element).save('subscriptions.pdf');
     }
