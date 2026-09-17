@@ -1,0 +1,1 @@
+import{j as l}from"./index-Ddkxz7CW.js";import{C as p}from"./calendar.esm-BCaz9VP8.js";const d=({value:e,onChange:a,placeholder:o="Select Date",dateFormat:r="dd/mm/yy",className:t="",disabled:m=!1,maxDate:s,minDate:n,appendTo:C=""})=>l.jsx(p,{value:e,onChange:i=>a(i.value),placeholder:o,dateFormat:r,className:t,disabled:m,maxDate:s,minDate:n,appendTo:C});export{d as C};

@@ -1,568 +1,317 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { expensecategory } from "../../core/json/expensecategory";
 import PrimeDataTable from "../../components/data-table";
-import DeleteModal from "../../components/delete-modal";
-import { Editor } from "primereact/editor";
-import SearchFromApi from "../../components/data-table/search";
-import TooltipIcons from "../../components/tooltip-content/tooltipIcons";
-import RefreshIcon from "../../components/tooltip-content/refresh";
-import CollapesIcon from "../../components/tooltip-content/collapes";
+import ExpenseCategoryService, {
+  type ExpenseCategoryItem,
+} from "../services/expense-category.service";
 
 const ExpenseCategory = () => {
-  const [text, setText] = useState("");
+  const [data, setData] = useState<ExpenseCategoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const data = expensecategory;
+  // Modal Form State
+  const [categoryName, setCategoryName] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState("Active");
+  const [submitting, setSubmitting] = useState(false);
+
+  // 1. Fetch from MongoDB
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await ExpenseCategoryService.getAll();
+      if (res.status && Array.isArray(res.data)) {
+        setData(res.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch expense categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // 2. Submit to MongoDB
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryName.trim()) {
+      alert("Please enter a Category Name");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await ExpenseCategoryService.create({
+        categoryName,
+        description,
+        status,
+      });
+
+      if (res.status) {
+        // Close modal
+        const closeBtn = document.querySelector(
+          "#add-units .btn-close, #add-category .btn-close, .modal .btn-close",
+        ) as HTMLElement;
+        closeBtn?.click();
+
+        // Reset form
+        setCategoryName("");
+        setDescription("");
+        setStatus("Active");
+
+        // Reload data from DB
+        fetchData();
+      } else {
+        alert("Failed to save: " + res.message);
+      }
+    } catch (err: any) {
+      console.error("Save error:", err);
+      alert("Error: " + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 3. Delete from MongoDB
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this category?"))
+      return;
+    try {
+      await ExpenseCategoryService.delete(id);
+      fetchData();
+    } catch (error) {
+      console.error("Delete failed:", error);
+    }
+  };
+
+  // 4. Search Filter
+  const filteredData = data.filter((item) => {
+    const name = (item.categoryName || "").toLowerCase();
+    const desc = (item.description || "").toLowerCase();
+    const q = searchQuery.toLowerCase();
+    return name.includes(q) || desc.includes(q);
+  });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // 5. Table Columns matching DreamsPOS
   const columns = [
     {
-      header: "CategoryName",
+      header: "Category Name",
       field: "categoryName",
+      body: (row: any) => (
+        <span className="fw-semibold">{row.categoryName}</span>
+      ),
     },
     {
       header: "Description",
       field: "description",
+      body: (row: any) => <span>{row.description || "—"}</span>,
     },
     {
       header: "Status",
       field: "status",
-      body: () => (
-        <span
-          className={`badge  badge-success d-inline-flex align-items-center badge-xs`}
-        >
-          <i className="ti ti-point-filled me-1" />
-          Active
-        </span>
-      ),
+      body: (row: any) => {
+        const isActive = (row.status || "Active") === "Active";
+        return (
+          <span
+            className={`badge ${isActive ? "bg-success text-white" : "bg-danger text-white"}`}
+            style={{
+              borderRadius: "4px",
+              padding: "5px 10px",
+              fontSize: "12px",
+            }}
+          >
+            {row.status || "Active"}
+          </span>
+        );
+      },
     },
     {
       header: "Actions",
-      field: "actions",
-      key: "actions",
-      body: () => (
-        <div className="action-table-data">
-          <div className="edit-delete-action">
-            <Link
-              to="#"
-              className="me-2 p-2 mb-0"
-              data-bs-toggle="modal"
-              data-bs-target="#edit-units"
-            >
-              <i className="ti ti-edit" />
-            </Link>
-            <Link
-              className="me-0 confirm-text p-2 mb-0"
-              data-bs-toggle="modal"
-              data-bs-target="#delete-modal"
-              to="#"
-            >
-              <i className="ti ti-trash" />
-            </Link>
-          </div>
+      field: "_id",
+      body: (row: any) => (
+        <div className="action-table-data d-flex align-items-center gap-2">
+          <Link className="p-1 text-muted" to="#">
+            <i className="feather icon-edit" />
+          </Link>
+          <button
+            type="button"
+            className="p-1 text-muted border-0 bg-transparent"
+            onClick={() => handleDelete(row._id)}
+          >
+            <i className="feather icon-trash-2 text-danger" />
+          </button>
         </div>
       ),
-      sortable: false,
     },
   ];
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalRecords, _setTotalRecords] = useState<any>(data.length);
-  const [rows, setRows] = useState<number>(10);
-  const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
-  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
-
-  const handleSearch = (value: any) => {
-    setSearchQuery(value);
-  };
 
   return (
-    <>
-      <div>
-        <div className="page-wrapper">
-          <div className="content">
-            <div className="page-header">
-              <div className="add-item d-flex">
-                <div className="page-title">
-                  <h4>Expense Category</h4>
-                  <h6>Manage your expense categories</h6>
-                </div>
-              </div>
-              <ul className="table-top-head">
-                <TooltipIcons />
-                <RefreshIcon />
-                <CollapesIcon />
-              </ul>
-              <div className="page-btn">
-                <Link
-                  to="#"
-                  data-bs-toggle="modal"
-                  data-bs-target="#add-units"
-                  className="btn btn-primary"
-                >
-                  <i className="feather icon-plus-circle me-2" />
-                  Add Expense Category
-                </Link>
-              </div>
+    <div className="page-wrapper">
+      <div className="content">
+        {/* Page Top Header */}
+        <div className="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+          <div>
+            <h3 className="page-title fw-bold mb-1">Expense Category</h3>
+            <p className="text-muted mb-0">Manage Expense Categories</p>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <button
+              className="btn btn-outline-light border text-muted p-2 rounded"
+              onClick={fetchData}
+              title="Refresh"
+            >
+              <i className="feather icon-rotate-cw fs-16" />
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary d-flex align-items-center gap-2 px-3"
+              style={{ backgroundColor: "#ff6f28", borderColor: "#ff6f28" }}
+              data-bs-toggle="modal"
+              data-bs-target="#add-units"
+            >
+              <i className="feather icon-plus-circle" />
+              Add Expense Category
+            </button>
+          </div>
+        </div>
+
+        {/* Card Body & Table */}
+        <div className="card border-0 shadow-sm">
+          <div className="card-body p-3">
+            <div className="mb-3" style={{ width: "260px" }}>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ height: "42px", borderRadius: "8px" }}
+              />
             </div>
-            {/* /product list */}
-            <div className="card table-list-card">
-              <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
-                <SearchFromApi
-                  callback={handleSearch}
-                  rows={rows}
-                  setRows={setRows}
-                />
-                <div className="d-flex table-dropdown my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-                  <div className="dropdown me-2">
-                    <Link
-                      to="#"
-                      className="dropdown-toggle btn btn-white btn-md d-inline-flex align-items-center"
-                      data-bs-toggle="dropdown"
-                    >
-                      Select Status
-                    </Link>
-                    <ul className="dropdown-menu  dropdown-menu-end p-3">
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Active
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Inactive
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-                  <div className="dropdown">
-                    <Link
-                      to="#"
-                      className="dropdown-toggle btn btn-white btn-md d-inline-flex align-items-center"
-                      data-bs-toggle="dropdown"
-                    >
-                      Sort By : Last 7 Days
-                    </Link>
-                    <ul className="dropdown-menu  dropdown-menu-end p-3">
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Recently Added
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Ascending
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Desending
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Last Month
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Last 7 Days
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
+
+            {loading ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
                 </div>
+                <p className="mt-2 text-muted">
+                  Loading categories from database...
+                </p>
               </div>
-              <div className="card-body pb-0">
-                <div className="table-responsive">
-                  <PrimeDataTable
-                    column={columns}
-                    data={data}
-                    totalRecords={totalRecords}
-                    rows={rows}
-                    setRows={setRows}
-                    currentPage={currentPage}
-                    setCurrentPage={setCurrentPage}
-                    searchQuery={searchQuery}
-                    selectionMode="checkbox"
-                    selection={selectedProducts}
-                    onSelectionChange={(e: any) => setSelectedProducts(e.value)}
+            ) : (
+              <PrimeDataTable
+                data={filteredData}
+                column={columns}
+                totalRecords={filteredData.length}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Add Expense Category Modal (Matching Screenshot) ── */}
+      <div
+        className="modal fade"
+        id="add-units"
+        tabIndex={-1}
+        aria-hidden="true"
+      >
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content border-0 shadow">
+            <div className="modal-header border-0 pb-0 justify-content-between">
+              <h5 className="modal-title fw-bold">Add Expense Category</h5>
+              <button
+                type="button"
+                className="btn-close d-flex align-items-center justify-content-center text-white"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+                style={{
+                  backgroundColor: "#ff0000",
+                  borderRadius: "50%",
+                  opacity: 1,
+                  width: "32px",
+                  height: "32px",
+                  padding: "0",
+                }}
+              />
+            </div>
+
+            <form onSubmit={handleAddCategory}>
+              <div className="modal-body pt-3">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    Category Name <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter category name"
+                    required
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* /product list */}
-          </div>
-          <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-            <p className="mb-0">2014-2025 © DreamsPOS. All Right Reserved</p>
-            <p>
-              Designed &amp; Developed By{" "}
-              <Link to="#" className="text-primary">
-                Dreams
-              </Link>
-            </p>
-          </div>
-          <>
-            {/* Add Store */}
-            <div className="modal fade" id="add-store">
-              <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <div className="page-title">
-                      <h4>Add Store</h4>
-                    </div>
-                    <button
-                      type="button"
-                      className="close"
-                      data-bs-dismiss="modal"
-                      aria-label="Close"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  </div>
-                  <form>
-                    <div className="modal-body">
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Store Name <span className="text-danger">*</span>
-                        </label>
-                        <input type="text" className="form-control" />
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">
-                          User Name <span className="text-danger">*</span>
-                        </label>
-                        <input type="text" className="form-control" />
-                      </div>
-                      <div className="input-blocks mb-3">
-                        <label className="form-label">
-                          Password <span className="text-danger">*</span>
-                        </label>
-                        <div className="pass-group">
-                          <input type="password" className=" pass-input" />
-                          <span className="fas toggle-password fa-eye-slash" />
-                        </div>
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Email <span className="text-danger">*</span>
-                        </label>
-                        <input type="email" className="form-control" />
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Phone <span className="text-danger">*</span>
-                        </label>
-                        <input type="text" className="form-control" />
-                      </div>
-                      <div className="mb-0">
-                        <div className="status-toggle modal-status d-flex justify-content-between align-items-center">
-                          <span className="status-label ">Status</span>
-                          <input
-                            type="checkbox"
-                            id="user2"
-                            className="check"
-                            defaultChecked
-                          />
-                          <label htmlFor="user2" className="checktoggle" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="modal-footer">
-                      <button
-                        type="button"
-                        className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
-                        data-bs-dismiss="modal"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        data-bs-dismiss="modal"
-                        className="btn btn-primary fs-13 fw-medium p-2 px-3"
-                      >
-                        Add Store
-                      </button>
-                    </div>
-                  </form>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Description</label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    placeholder="Enter description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Status</label>
+                  <select
+                    className="form-select"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
                 </div>
               </div>
-            </div>
-            {/* /Add Store */}
-            {/* Edit Store */}
-            <div className="modal fade" id="edit-store">
-              <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <div className="page-title">
-                      <h4>Edit Store</h4>
-                    </div>
-                    <button
-                      type="button"
-                      className="close"
-                      data-bs-dismiss="modal"
-                      aria-label="Close"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  </div>
-                  <form>
-                    <div className="modal-body">
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Store Name <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          defaultValue="Electro Mart"
-                        />
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">
-                          User Name <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          defaultValue="johnsmith"
-                        />
-                      </div>
-                      <div className="input-blocks mb-3">
-                        <label className="form-label">
-                          Password <span className="text-danger">*</span>
-                        </label>
-                        <div className="pass-group">
-                          <input
-                            type="password"
-                            className=" pass-input"
-                            defaultValue="********"
-                          />
-                          <span className="fas toggle-password fa-eye-slash" />
-                        </div>
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Email <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          className="form-control"
-                          defaultValue="electromart@example.com"
-                        />
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Phone <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          defaultValue={+12498345785}
-                        />
-                      </div>
-                      <div className="mb-0">
-                        <div className="status-toggle modal-status d-flex justify-content-between align-items-center">
-                          <span className="status-label ">Status</span>
-                          <input
-                            type="checkbox"
-                            id="user1"
-                            className="check"
-                            defaultChecked
-                          />
-                          <label htmlFor="user1" className="checktoggle" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="modal-footer">
-                      <button
-                        type="button"
-                        className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
-                        data-bs-dismiss="modal"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        data-bs-dismiss="modal"
-                        className="btn btn-primary fs-13 fw-medium p-2 px-3"
-                      >
-                        save Changes
-                      </button>
-                    </div>
-                  </form>
-                </div>
+
+              <div className="modal-footer border-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-secondary px-4"
+                  style={{ backgroundColor: "#0b2545", borderColor: "#0b2545" }}
+                  data-bs-dismiss="modal"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary px-4"
+                  style={{ backgroundColor: "#ff6f28", borderColor: "#ff6f28" }}
+                  disabled={submitting}
+                >
+                  {submitting ? "Adding..." : "Add Category"}
+                </button>
               </div>
-            </div>
-            {/* /Edit Store */}
-          </>
+            </form>
+          </div>
         </div>
-        <>
-          <div className="modal fade" id="add-units">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="page-wrapper-new p-0">
-                  <div className="content">
-                    <div className="modal-header">
-                      <div className="page-title">
-                        <h4>Add Expense Category</h4>
-                      </div>
-                      <button
-                        type="button"
-                        className="close"
-                        data-bs-dismiss="modal"
-                        aria-label="Close"
-                      >
-                        <span aria-hidden="true">×</span>
-                      </button>
-                    </div>
-                    <div className="modal-body">
-                      <form>
-                        <div className="row">
-                          <div className="col-lg-12">
-                            <div className="mb-3">
-                              <label className="form-label">
-                                Category
-                                <span className="text-danger ms-1">*</span>
-                              </label>
-                              <input type="text" className="form-control" />
-                            </div>
-                          </div>
-                          <div className="col-lg-12">
-                            <div className="mb-3 summer-description-box">
-                              <label className="form-label">Description</label>
-                              <Editor
-                                value={text}
-                                onTextChange={(e: any) => setText(e.htmlValue)}
-                                style={{ height: "200px" }}
-                              />
-                              <p className="mt-1">Maximum 60 Words</p>
-                            </div>
-                          </div>
-                          <div className="col-lg-12">
-                            <div className="status-toggle modal-status d-flex justify-content-between align-items-center">
-                              <span className="status-label">Status</span>
-                              <input
-                                type="checkbox"
-                                id="user1"
-                                className="check"
-                                defaultChecked
-                              />
-                              <label htmlFor="user1" className="checktoggle">
-                                {" "}
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      </form>
-                    </div>
-                    <div className="modal-footer">
-                      <button
-                        type="button"
-                        className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
-                        data-bs-dismiss="modal"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        data-bs-dismiss="modal"
-                        className="btn btn-primary fs-13 fw-medium p-2 px-3"
-                      >
-                        Add Expense Category
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal fade" id="edit-units">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="page-wrapper-new p-0">
-                  <div className="content">
-                    <div className="modal-header">
-                      <div className="page-title">
-                        <h4>Edit Expense Category</h4>
-                      </div>
-                      <button
-                        type="button"
-                        className="close"
-                        data-bs-dismiss="modal"
-                        aria-label="Close"
-                      >
-                        <span aria-hidden="true">×</span>
-                      </button>
-                    </div>
-                    <div className="modal-body">
-                      <form>
-                        <div className="row">
-                          <div className="col-lg-12">
-                            <div className="mb-3">
-                              <label className="form-label">
-                                Category
-                                <span className="text-danger ms-1">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                defaultValue="Utilities"
-                              />
-                            </div>
-                          </div>
-                          <div className="col-lg-12">
-                            <div className="mb-3 summer-description-box">
-                              <label className="form-label">Description</label>
-                              <Editor
-                                value={text}
-                                onTextChange={(e: any) => setText(e.htmlValue)}
-                                style={{ height: "200px" }}
-                              />
-                              <p className="mt-1">Maximum 60 Words</p>
-                            </div>
-                          </div>
-                          <div className="col-lg-12">
-                            <div className="status-toggle modal-status d-flex justify-content-between align-items-center">
-                              <span className="status-label">Status</span>
-                              <input
-                                type="checkbox"
-                                id="user2"
-                                className="check"
-                                defaultChecked
-                              />
-                              <label htmlFor="user2" className="checktoggle">
-                                {" "}
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      </form>
-                    </div>
-                    <div className="modal-footer">
-                      <button
-                        type="button"
-                        className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
-                        data-bs-dismiss="modal"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        data-bs-dismiss="modal"
-                        className="btn btn-primary fs-13 fw-medium p-2 px-3"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-
-        <DeleteModal />
       </div>
-    </>
+      {/* ── End Modal ── */}
+    </div>
   );
 };
 

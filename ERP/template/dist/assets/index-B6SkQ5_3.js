@@ -1,0 +1,1 @@
+import{r as i,j as e}from"./index-Ddkxz7CW.js";import{C as l}from"./calendar.esm-BCaz9VP8.js";const u=({selectedTime:r,onChange:t,className:a="datetimepicker",minTime:m,disabled:n=!1})=>{const o=i.useRef(null);return e.jsx(e.Fragment,{children:e.jsx(l,{ref:o,className:a,placeholder:"Select time",value:r,onChange:s=>t(s.value),timeOnly:!0,disabled:n,minDate:m})})};export{u as C};

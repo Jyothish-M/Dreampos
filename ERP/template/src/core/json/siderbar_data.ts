@@ -241,6 +241,26 @@ export const SidebarData = [
       },
     ],
   },
+     
+      {
+    label: "Finance & Accounts",
+    submenuOpen: true,
+    showSubRoute: false,
+    submenuHdr: "Finance & Accounts",
+    submenuItems: [
+      {
+        label: "Expenses",
+        icon: "file-text",
+        submenu: true,
+        showSubRoute: false,
+        submenuItems: [
+          { label: "Expenses", link: "/expenses" },
+          { label: "Expense Category", link: "/expense-category" },
+        ],
+      },
+    ],
+  },
+
   {
     label: "People",
     submenuOpen: true,
