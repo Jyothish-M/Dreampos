@@ -31,6 +31,10 @@ import packageRoutes from "./routes/packageRoutes.js";
 import stockRoutes from "./routes/stockRoutes.js";
 import stockAdjustmentRoutes from "./routes/stockAdjustmentRoutes.js";
 import stockTransferRoutes from "./routes/stockTransferRoutes.js";
+import expenseRoutes from "./routes/expenseRoutes.js"; // Import the expense routes
+import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
+
+
 
 dotenv.config();
 
@@ -112,6 +116,9 @@ app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/stock", stockRoutes);
 app.use("/api/stock-adjustments", stockAdjustmentRoutes);
 app.use("/api/stock-transfers", stockTransferRoutes);
+
+app.use("/api/expenses", expenseRoutes); 
+app.use("/api/expense-categories", expenseCategoryRoutes);
 
 // Asset Management module
 app.use("/api/assets", assetRoutes);

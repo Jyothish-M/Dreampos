@@ -103,7 +103,7 @@ export const all_routes = {
   categorylist: "/category-list",
   subcategories: "/sub-categories",
   editproduct: "/edit-product",
-  expenselist: "/expense-list",
+  expenselist: "/expenses",
   expensecategory: "/expense-category",
   calendars: "/calendar",
   variantattributes: "/variant-attributes",
