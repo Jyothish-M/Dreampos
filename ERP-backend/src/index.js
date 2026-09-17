@@ -132,12 +132,17 @@ app.use("/api", dropdownRoutes);
 // Packages module
 app.use("/api/packages", packageRoutes);
 
-// Health check endpoint
+// Health check / diagnostic endpoint
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
     message: "Server is running",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    env: {
+      MONGO_URI: process.env.MONGO_URI ? "SET ✅" : "MISSING ❌",
+      NODE_ENV: process.env.NODE_ENV || "not set",
+      VERCEL: process.env.VERCEL || "not set",
+    }
   });
 });
 
