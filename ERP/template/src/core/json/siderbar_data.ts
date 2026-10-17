@@ -258,6 +258,16 @@ export const SidebarData = [
           { label: "Expense Category", link: "/expense-category" },
         ],
       },
+      {
+        label: "Income",
+        icon: "credit-card",
+        submenu: true,
+        showSubRoute: false,
+        submenuItems: [
+          { label: "Income", link: "/income" },
+          { label: "Income Category", link: "/income-category" },
+        ],
+      },
     ],
   },
 

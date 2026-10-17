@@ -1,64 +1,119 @@
-
 import { Link } from "react-router-dom";
 import PrimeDataTable from "../../../components/data-table";
-import { incomeCategoryList } from "../../../core/json/incomecategory";
 import TableTopHead from "../../../components/table-top-head";
-import DeleteModal from "../../../components/delete-modal";
 import SearchFromApi from "../../../components/data-table/search";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import apiClient from "../../services/api.service";
+import moment from "moment";
 
 const IncomeCategory = () => {
-  const dataSource = incomeCategoryList;
+  const [listData, setListData] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [formData, setFormData] = useState({ name: "" });
+  const [submitting, setSubmitting] = useState(false);
+
+  // DataTable states
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [rows, setRows] = useState<number>(10);
+  const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
+  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get("/income-categories");
+      const data = res.data?.data || res.data || [];
+      if (Array.isArray(data)) {
+        setListData(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch income categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const handleSearch = (value: any) => {
+    setSearchQuery(value);
+  };
+
+  const handleAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name) return alert("Please enter a category name");
+
+    try {
+      setSubmitting(true);
+      await apiClient.post("/income-categories", formData);
+      alert("Income Category added successfully!");
+      setFormData({ name: "" });
+      
+      // Close modal hack for bootstrap 5
+      const closeBtn = document.querySelector("#add-units .btn-close, #add-units [data-bs-dismiss='modal']") as HTMLButtonElement;
+      if (closeBtn) closeBtn.click();
+      
+      fetchCategories();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || "Failed to add category");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this category?")) {
+      try {
+        await apiClient.delete(`/income-categories/${id}`);
+        alert("Income Category deleted successfully!");
+        fetchCategories();
+      } catch (error) {
+        alert("Failed to delete category");
+      }
+    }
+  };
 
   const columns = [
     {
-      header: "Code",
-      field: "Code",
+      header: "Category Name",
+      field: "name",
     },
-
     {
-      header: "Category",
-      field: "Category",
+      header: "Status",
+      field: "status",
+      body: (rowData: any) => (
+        <span className={`badge ${rowData.status === "Active" ? "badge-linesuccess" : "badge-linedanger"}`}>
+          {rowData.status || "Active"}
+        </span>
+      ),
     },
     {
       header: "Added Date",
-      field: "Added_Date",
+      field: "createdAt",
+      body: (rowData: any) => rowData.createdAt ? moment(rowData.createdAt).format("DD MMM YYYY") : "-",
     },
-
     {
       header: "Action",
       field: "actions",
-      body: () => (
+      body: (rowData: any) => (
         <div className="edit-delete-action">
           <Link
+            className="confirm-text p-2 mb-0"
             to="#"
-            className="me-2 p-2 mb-0"
-            data-bs-toggle="modal"
-            data-bs-target="#edit-units"
+            onClick={(e) => {
+              e.preventDefault();
+              handleDelete(rowData._id);
+            }}
           >
-            <i className="ti ti-edit" />
-          </Link>
-          <Link
-            data-bs-toggle="modal"
-            data-bs-target="#delete-modal"
-            className="me-0 p-2 mb-0"
-            to="#"
-          >
-            <i className="ti ti-trash" />
+            <i className="ti ti-trash text-danger" />
           </Link>
         </div>
       ),
     },
   ];
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalRecords, _setTotalRecords] = useState<any>(dataSource.length);
-  const [rows, setRows] = useState<number>(10);
-  const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
-  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
 
-  const handleSearch = (value: any) => {
-    setSearchQuery(value);
-  };
   return (
     <>
       <div className="page-wrapper">
@@ -67,10 +122,10 @@ const IncomeCategory = () => {
             <div className="add-item d-flex">
               <div className="page-title">
                 <h4>Income Category</h4>
-                <h6>Manage your Income Category</h6>
+                <h6>Manage your Income Categories</h6>
               </div>
             </div>
-           <TableTopHead />
+            <TableTopHead />
             <div className="page-btn">
               <Link
                 to="#"
@@ -84,7 +139,6 @@ const IncomeCategory = () => {
             </div>
           </div>
 
-          {/* /product list */}
           <div className="card table-list-card">
             <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
               <SearchFromApi
@@ -92,263 +146,92 @@ const IncomeCategory = () => {
                 rows={rows}
                 setRows={setRows}
               />
-              <div className="d-flex table-dropdown my-xl-auto right-content align-items-center flex-wrap row-gap-3">
-                <div className="dropdown me-2">
-                  <Link
-                    to="#"
-                    className="dropdown-toggle btn btn-white btn-md d-inline-flex align-items-center"
-                    data-bs-toggle="dropdown"
-                  >
-                    Category
-                  </Link>
-                  <ul className="dropdown-menu  dropdown-menu-end p-3">
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Foreign investment
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Product Export
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-                <div className="dropdown me-2">
-                  <Link
-                    to="#"
-                    className="dropdown-toggle btn btn-white btn-md d-inline-flex align-items-center"
-                    data-bs-toggle="dropdown"
-                  >
-                    Status
-                  </Link>
-                  <ul className="dropdown-menu  dropdown-menu-end p-3">
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Active
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Inactive
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-                <div className="dropdown">
-                  <Link
-                    to="#"
-                    className="dropdown-toggle btn btn-white btn-md d-inline-flex align-items-center"
-                    data-bs-toggle="dropdown"
-                  >
-                    Sort By : Last 7 Days
-                  </Link>
-                  <ul className="dropdown-menu  dropdown-menu-end p-3">
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Recently Added
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Ascending
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Desending
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Last Month
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="#" className="dropdown-item rounded-1">
-                        Last 7 Days
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </div>
             </div>
             <div className="card-body pb-0">
               <div className="table-responsive">
-                <PrimeDataTable
-                  column={columns}
-                  data={dataSource}
-                  totalRecords={totalRecords}
-                  rows={rows}
-                  setRows={setRows}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                  searchQuery={searchQuery}
-                  selectionMode="checkbox"
-                  selection={selectedProducts}
-                  onSelectionChange={(e: any) => setSelectedProducts(e.value)}
-                />{" "}
+                {loading ? (
+                  <div className="p-4 text-center">Loading from database...</div>
+                ) : (
+                  <PrimeDataTable
+                    column={columns}
+                    data={listData}
+                    totalRecords={listData.length}
+                    rows={rows}
+                    setRows={setRows}
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    searchQuery={searchQuery}
+                    selectionMode="checkbox"
+                    selection={selectedProducts}
+                    onSelectionChange={(e: any) => setSelectedProducts(e.value)}
+                  />
+                )}
               </div>
             </div>
           </div>
-
-          {/* /product list */}
-        </div>
-        <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-          <p className="mb-0">2014-2025 © DreamsPOS. All Right Reserved</p>
-          <p>
-            Designed &amp; Developed By{" "}
-            <Link to="#" className="text-primary">
-              Dreams
-            </Link>
-          </p>
         </div>
       </div>
-      <>
-        <div className="modal fade" id="add-units">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="page-wrapper-new p-0">
-                <div className="content">
-                  <div className="modal-header">
-                    <div className="page-title">
-                      <h4>Add Income Category</h4>
-                    </div>
-                    <button
-                      type="button"
-                      className="close"
-                      data-bs-dismiss="modal"
-                      aria-label="Close"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
+
+      {/* Add Modal */}
+      <div className="modal fade" id="add-units">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="page-wrapper-new p-0">
+              <div className="content">
+                <div className="modal-header">
+                  <div className="page-title">
+                    <h4>Add Income Category</h4>
                   </div>
-                  <div className="modal-body">
-                    <form>
-                      <div className="row">
-                        <div className="col-lg-12">
-                          <div className="mb-3 position-relative">
-                            <label className="form-label">
-                              Code<span className="text-danger ms-1">*</span>
-                            </label>
-                            <input type="text" className="form-control list" />
-                            <button
-                              type="button"
-                              data-bs-dismiss="modal"
-                              className="btn btn-primaryadd btn-generate"
-                            >
-                              Generate
-                            </button>
-                          </div>
-                        </div>
-                        <div className="col-lg-12">
-                          <label className="form-label">
-                            Enter Name
-                            <span className="text-danger ms-1">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            defaultValue="Investment"
-                          />
-                        </div>
+                  <button
+                    type="button"
+                    className="close btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleAddSubmit}>
+                    <div className="row">
+                      <div className="col-lg-12">
+                        <label className="form-label">
+                          Category Name
+                          <span className="text-danger ms-1">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. Foreign investment"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ name: e.target.value })}
+                          required
+                        />
                       </div>
-                    </form>
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      type="button"
-                      className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
-                      data-bs-dismiss="modal"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      data-bs-dismiss="modal"
-                      className="btn btn-primary fs-13 fw-medium p-2 px-3"
-                    >
-                      Add Category
-                    </button>
-                  </div>
+                    </div>
+                    <div className="modal-footer mt-4 pe-0 pb-0">
+                      <button
+                        type="button"
+                        className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
+                        data-bs-dismiss="modal"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary fs-13 fw-medium p-2 px-3"
+                        disabled={submitting}
+                      >
+                        {submitting ? "Adding..." : "Add Category"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="modal fade" id="edit-units">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="page-wrapper-new p-0">
-                <div className="content">
-                  <div className="modal-header">
-                    <div className="page-title">
-                      <h4>Edit Income Category</h4>
-                    </div>
-                    <button
-                      type="button"
-                      className="close"
-                      data-bs-dismiss="modal"
-                      aria-label="Close"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  </div>
-                  <div className="modal-body">
-                    <form>
-                      <div className="row">
-                        <div className="col-lg-12">
-                          <div className="mb-3 position-relative">
-                            <label className="form-label">
-                              Code<span className="text-danger ms-1">*</span>
-                            </label>
-                            <input type="text" className="form-control list" />
-                            <button
-                              type="button"
-                              data-bs-dismiss="modal"
-                              className="btn btn-primaryadd btn-generate"
-                            >
-                              Generate
-                            </button>
-                          </div>
-                        </div>
-                        <div className="col-lg-12">
-                          <label className="form-label">
-                            Enter Name
-                            <span className="text-danger ms-1">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            defaultValue="Investment"
-                          />
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      type="button"
-                      className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
-                      data-bs-dismiss="modal"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      data-bs-dismiss="modal"
-                      className="btn btn-primary fs-13 fw-medium p-2 px-3"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-       <DeleteModal />
-      </>
+      </div>
     </>
   );
 };

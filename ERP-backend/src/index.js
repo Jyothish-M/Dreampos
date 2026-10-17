@@ -33,9 +33,8 @@ import stockAdjustmentRoutes from "./routes/stockAdjustmentRoutes.js";
 import stockTransferRoutes from "./routes/stockTransferRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js"; // Import the expense routes
 import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
-
-
-
+import incomeRoutes from "./routes/incomeRoutes.js";
+import incomeCategoryRoutes from "./routes/incomeCategoryRoutes.js";
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -119,6 +118,8 @@ app.use("/api/stock-transfers", stockTransferRoutes);
 
 app.use("/api/expenses", expenseRoutes); 
 app.use("/api/expense-categories", expenseCategoryRoutes);
+app.use("/api/incomes", incomeRoutes);
+app.use("/api/income-categories", incomeCategoryRoutes);
 
 // Asset Management module
 app.use("/api/assets", assetRoutes);
