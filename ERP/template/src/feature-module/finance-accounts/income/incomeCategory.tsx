@@ -5,6 +5,8 @@ import SearchFromApi from "../../../components/data-table/search";
 import { useState, useEffect } from "react";
 import apiClient from "../../services/api.service";
 import moment from "moment";
+// @ts-ignore
+import html2pdf from "html2pdf.js";
 
 const IncomeCategory = () => {
   const [listData, setListData] = useState<any[]>([]);
@@ -50,11 +52,13 @@ const IncomeCategory = () => {
       await apiClient.post("/income-categories", formData);
       alert("Income Category added successfully!");
       setFormData({ name: "" });
-      
+
       // Close modal hack for bootstrap 5
-      const closeBtn = document.querySelector("#add-units .btn-close, #add-units [data-bs-dismiss='modal']") as HTMLButtonElement;
+      const closeBtn = document.querySelector(
+        "#add-units .btn-close, #add-units [data-bs-dismiss='modal']"
+      ) as HTMLButtonElement;
       if (closeBtn) closeBtn.click();
-      
+
       fetchCategories();
     } catch (error: any) {
       alert(error?.response?.data?.message || "Failed to add category");
@@ -72,6 +76,96 @@ const IncomeCategory = () => {
       } catch (error) {
         alert("Failed to delete category");
       }
+    }
+  };
+
+  // Export to Excel / CSV
+  const handleExcelExport = () => {
+    if (!listData || listData.length === 0) {
+      alert("No category records found to export.");
+      return;
+    }
+    const headers = ["#", "Category Name", "Status", "Added Date"];
+    const rowsList = listData.map((item: any, idx: number) => [
+      idx + 1,
+      `"${item.name || ""}"`,
+      `"${item.status || "Active"}"`,
+      `"${item.createdAt ? moment(item.createdAt).format("DD MMM YYYY") : "-"}"`,
+    ]);
+    const csvContent = [headers.join(","), ...rowsList.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Income_Category_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export to PDF
+  const handlePdfExport = async () => {
+    if (!listData || listData.length === 0) {
+      alert("No category records found to export.");
+      return;
+    }
+    const rowsHtml = listData
+      .map(
+        (item: any, idx: number) => `
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 10px 8px;">${idx + 1}</td>
+          <td style="padding: 10px 8px; font-weight: bold;">${item.name || "-"}</td>
+          <td style="padding: 10px 8px;">${item.status || "Active"}</td>
+          <td style="padding: 10px 8px;">${item.createdAt ? moment(item.createdAt).format("DD MMM YYYY") : "-"}</td>
+        </tr>
+      `
+      )
+      .join("");
+
+    const tempDiv = document.createElement("div");
+    tempDiv.style.padding = "24px";
+    tempDiv.style.fontFamily = "Arial, sans-serif";
+    tempDiv.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #fe9f43;padding-bottom:12px;margin-bottom:18px;">
+        <div>
+          <h2 style="margin:0;color:#333;">DreamsPOS</h2>
+          <p style="margin:4px 0 0;color:#fe9f43;font-weight:bold;">Income Category Report</p>
+          <p style="margin:2px 0 0;color:#777;font-size:11px;">Generated: ${new Date().toLocaleString()}</p>
+        </div>
+        <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:8px 14px;text-align:right;">
+          <p style="margin:0;font-size:11px;color:#6c757d;">Total Categories</p>
+          <h3 style="margin:2px 0 0;color:#ff6f28;">${listData.length}</h3>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:#fe9f43;color:white;">
+            <th style="padding:10px 8px;text-align:left;">#</th>
+            <th style="padding:10px 8px;text-align:left;">Category Name</th>
+            <th style="padding:10px 8px;text-align:left;">Status</th>
+            <th style="padding:10px 8px;text-align:left;">Added Date</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+    document.body.appendChild(tempDiv);
+    try {
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: `Income_Category_Report_${new Date().toISOString().split("T")[0]}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(tempDiv)
+        .save();
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      document.body.removeChild(tempDiv);
     }
   };
 
@@ -125,7 +219,10 @@ const IncomeCategory = () => {
                 <h6>Manage your Income Categories</h6>
               </div>
             </div>
-            <TableTopHead />
+            <TableTopHead
+              onPdfExport={handlePdfExport}
+              onExcelExport={handleExcelExport}
+            />
             <div className="page-btn">
               <Link
                 to="#"
@@ -188,7 +285,7 @@ const IncomeCategory = () => {
                     data-bs-dismiss="modal"
                     aria-label="Close"
                   >
-                    <span aria-hidden="true">Ã—</span>
+                    <span aria-hidden="true">×</span>
                   </button>
                 </div>
                 <div className="modal-body">

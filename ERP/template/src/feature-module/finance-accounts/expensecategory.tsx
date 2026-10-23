@@ -1,15 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import PrimeDataTable from "../../components/data-table";
+import TableTopHead from "../../components/table-top-head";
+import SearchFromApi from "../../components/data-table/search";
 import ExpenseCategoryService, {
   type ExpenseCategoryItem,
 } from "../services/expense-category.service";
+import moment from "moment";
+// @ts-ignore
+import html2pdf from "html2pdf.js";
 
 const ExpenseCategory = () => {
   const [data, setData] = useState<ExpenseCategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [rows, setRows] = useState<number>(10);
+  const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
+  const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
 
   // Modal Form State
   const [categoryName, setCategoryName] = useState("");
@@ -36,6 +43,10 @@ const ExpenseCategory = () => {
     fetchData();
   }, []);
 
+  const handleSearch = (value: any) => {
+    setSearchQuery(value);
+  };
+
   // 2. Submit to MongoDB
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,18 +64,15 @@ const ExpenseCategory = () => {
       });
 
       if (res.status) {
-        // Close modal
         const closeBtn = document.querySelector(
           "#add-units .btn-close, #add-category .btn-close, .modal .btn-close",
         ) as HTMLElement;
         closeBtn?.click();
 
-        // Reset form
         setCategoryName("");
         setDescription("");
         setStatus("Active");
 
-        // Reload data from DB
         fetchData();
       } else {
         alert("Failed to save: " + res.message);
@@ -89,229 +97,296 @@ const ExpenseCategory = () => {
     }
   };
 
-  // 4. Search Filter
-  const filteredData = data.filter((item) => {
-    const name = (item.categoryName || "").toLowerCase();
-    const desc = (item.description || "").toLowerCase();
-    const q = searchQuery.toLowerCase();
-    return name.includes(q) || desc.includes(q);
-  });
+  // Export to Excel / CSV
+  const handleExcelExport = () => {
+    if (!data || data.length === 0) {
+      alert("No category records found to export.");
+      return;
+    }
+    const headers = ["#", "Category Name", "Description", "Status", "Added Date"];
+    const rowsList = data.map((item: any, idx: number) => [
+      idx + 1,
+      `"${item.categoryName || item.name || ""}"`,
+      `"${(item.description || "").replace(/"/g, '""')}"`,
+      `"${item.status || "Active"}"`,
+      `"${item.createdAt ? moment(item.createdAt).format("DD MMM YYYY") : "-"}"`,
+    ]);
+    const csvContent = [headers.join(","), ...rowsList.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Expense_Category_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+  // Export to PDF
+  const handlePdfExport = async () => {
+    if (!data || data.length === 0) {
+      alert("No category records found to export.");
+      return;
+    }
+    const rowsHtml = data
+      .map(
+        (item: any, idx: number) => `
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 10px 8px;">${idx + 1}</td>
+          <td style="padding: 10px 8px; font-weight: bold;">${item.categoryName || item.name || "-"}</td>
+          <td style="padding: 10px 8px;">${item.description || "-"}</td>
+          <td style="padding: 10px 8px;">${item.status || "Active"}</td>
+          <td style="padding: 10px 8px;">${item.createdAt ? moment(item.createdAt).format("DD MMM YYYY") : "-"}</td>
+        </tr>
+      `
+      )
+      .join("");
 
-  // 5. Table Columns matching DreamsPOS
+    const tempDiv = document.createElement("div");
+    tempDiv.style.padding = "24px";
+    tempDiv.style.fontFamily = "Arial, sans-serif";
+    tempDiv.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ff6f28;padding-bottom:12px;margin-bottom:18px;">
+        <div>
+          <h2 style="margin:0;color:#333;">DreamsPOS</h2>
+          <p style="margin:4px 0 0;color:#ff6f28;font-weight:bold;">Expense Category Report</p>
+          <p style="margin:2px 0 0;color:#777;font-size:11px;">Generated: ${new Date().toLocaleString()}</p>
+        </div>
+        <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:8px 14px;text-align:right;">
+          <p style="margin:0;font-size:11px;color:#6c757d;">Total Categories</p>
+          <h3 style="margin:2px 0 0;color:#ff6f28;">${data.length}</h3>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:#ff6f28;color:white;">
+            <th style="padding:10px 8px;text-align:left;">#</th>
+            <th style="padding:10px 8px;text-align:left;">Category Name</th>
+            <th style="padding:10px 8px;text-align:left;">Description</th>
+            <th style="padding:10px 8px;text-align:left;">Status</th>
+            <th style="padding:10px 8px;text-align:left;">Added Date</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+    document.body.appendChild(tempDiv);
+    try {
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: `Expense_Category_Report_${new Date().toISOString().split("T")[0]}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(tempDiv)
+        .save();
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      document.body.removeChild(tempDiv);
+    }
+  };
+
   const columns = [
     {
       header: "Category Name",
       field: "categoryName",
       body: (row: any) => (
-        <span className="fw-semibold">{row.categoryName}</span>
+        <span className="fw-semibold">{row.categoryName || row.name}</span>
       ),
     },
     {
       header: "Description",
       field: "description",
-      body: (row: any) => <span>{row.description || "—"}</span>,
+      body: (row: any) => <span>{row.description || "-"}</span>,
     },
     {
       header: "Status",
       field: "status",
-      body: (row: any) => {
-        const isActive = (row.status || "Active") === "Active";
-        return (
-          <span
-            className={`badge ${isActive ? "bg-success text-white" : "bg-danger text-white"}`}
-            style={{
-              borderRadius: "4px",
-              padding: "5px 10px",
-              fontSize: "12px",
-            }}
-          >
-            {row.status || "Active"}
-          </span>
-        );
-      },
+      body: (row: any) => (
+        <span
+          className={`badge ${
+            (row.status || "Active") === "Active"
+              ? "badge-linesuccess"
+              : "badge-linedanger"
+          }`}
+        >
+          {row.status || "Active"}
+        </span>
+      ),
     },
     {
-      header: "Actions",
-      field: "_id",
+      header: "Added Date",
+      field: "createdAt",
+      body: (rowData: any) =>
+        rowData.createdAt ? moment(rowData.createdAt).format("DD MMM YYYY") : "-",
+    },
+    {
+      header: "Action",
+      field: "actions",
       body: (row: any) => (
-        <div className="action-table-data d-flex align-items-center gap-2">
-          <Link className="p-1 text-muted" to="#">
-            <i className="feather icon-edit" />
-          </Link>
-          <button
-            type="button"
-            className="p-1 text-muted border-0 bg-transparent"
-            onClick={() => handleDelete(row._id)}
+        <div className="edit-delete-action">
+          <Link
+            className="confirm-text p-2 mb-0"
+            to="#"
+            onClick={(e) => {
+              e.preventDefault();
+              handleDelete(row._id);
+            }}
           >
-            <i className="feather icon-trash-2 text-danger" />
-          </button>
+            <i className="ti ti-trash text-danger" />
+          </Link>
         </div>
       ),
     },
   ];
 
   return (
-    <div className="page-wrapper">
-      <div className="content">
-        {/* Page Top Header */}
-        <div className="page-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
-          <div>
-            <h3 className="page-title fw-bold mb-1">Expense Category</h3>
-            <p className="text-muted mb-0">Manage Expense Categories</p>
+    <>
+      <div className="page-wrapper">
+        <div className="content">
+          <div className="page-header">
+            <div className="add-item d-flex">
+              <div className="page-title">
+                <h4>Expense Category</h4>
+                <h6>Manage your Expense Categories</h6>
+              </div>
+            </div>
+            <TableTopHead
+              onPdfExport={handlePdfExport}
+              onExcelExport={handleExcelExport}
+            />
+            <div className="page-btn">
+              <Link
+                to="#"
+                data-bs-toggle="modal"
+                data-bs-target="#add-units"
+                className="btn btn-primary"
+              >
+                <i className="feather icon-plus-circle me-2" />
+                Add New
+              </Link>
+            </div>
           </div>
 
-          <div className="d-flex align-items-center gap-2">
-            <button
-              className="btn btn-outline-light border text-muted p-2 rounded"
-              onClick={fetchData}
-              title="Refresh"
-            >
-              <i className="feather icon-rotate-cw fs-16" />
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary d-flex align-items-center gap-2 px-3"
-              style={{ backgroundColor: "#ff6f28", borderColor: "#ff6f28" }}
-              data-bs-toggle="modal"
-              data-bs-target="#add-units"
-            >
-              <i className="feather icon-plus-circle" />
-              Add Expense Category
-            </button>
-          </div>
-        </div>
-
-        {/* Card Body & Table */}
-        <div className="card border-0 shadow-sm">
-          <div className="card-body p-3">
-            <div className="mb-3" style={{ width: "260px" }}>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ height: "42px", borderRadius: "8px" }}
+          <div className="card table-list-card">
+            <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
+              <SearchFromApi
+                callback={handleSearch}
+                rows={rows}
+                setRows={setRows}
               />
             </div>
-
-            {loading ? (
-              <div className="text-center py-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                <p className="mt-2 text-muted">
-                  Loading categories from database...
-                </p>
+            <div className="card-body pb-0">
+              <div className="table-responsive">
+                {loading ? (
+                  <div className="p-4 text-center">Loading from database...</div>
+                ) : (
+                  <PrimeDataTable
+                    column={columns}
+                    data={data}
+                    totalRecords={data.length}
+                    rows={rows}
+                    setRows={setRows}
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    searchQuery={searchQuery}
+                    selectionMode="checkbox"
+                    selection={selectedProducts}
+                    onSelectionChange={(e: any) => setSelectedProducts(e.value)}
+                  />
+                )}
               </div>
-            ) : (
-              <PrimeDataTable
-                data={filteredData}
-                column={columns}
-                totalRecords={filteredData.length}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-              />
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Add Expense Category Modal (Matching Screenshot) ── */}
-      <div
-        className="modal fade"
-        id="add-units"
-        tabIndex={-1}
-        aria-hidden="true"
-      >
+      {/* Add Modal */}
+      <div className="modal fade" id="add-units">
         <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content border-0 shadow">
-            <div className="modal-header border-0 pb-0 justify-content-between">
-              <h5 className="modal-title fw-bold">Add Expense Category</h5>
-              <button
-                type="button"
-                className="btn-close d-flex align-items-center justify-content-center text-white"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-                style={{
-                  backgroundColor: "#ff0000",
-                  borderRadius: "50%",
-                  opacity: 1,
-                  width: "32px",
-                  height: "32px",
-                  padding: "0",
-                }}
-              />
-            </div>
-
-            <form onSubmit={handleAddCategory}>
-              <div className="modal-body pt-3">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Category Name <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter category name"
-                    required
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Description</label>
-                  <textarea
-                    className="form-control"
-                    rows={3}
-                    placeholder="Enter description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Status</label>
-                  <select
-                    className="form-select"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
+          <div className="modal-content">
+            <div className="page-wrapper-new p-0">
+              <div className="content">
+                <div className="modal-header">
+                  <div className="page-title">
+                    <h4>Add Expense Category</h4>
+                  </div>
+                  <button
+                    type="button"
+                    className="close btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                    <span aria-hidden="true">�</span>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleAddCategory}>
+                    <div className="row">
+                      <div className="col-lg-12 mb-3">
+                        <label className="form-label">
+                          Category Name
+                          <span className="text-danger ms-1">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter category name"
+                          required
+                          value={categoryName}
+                          onChange={(e) => setCategoryName(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-lg-12 mb-3">
+                        <label className="form-label">Description</label>
+                        <textarea
+                          className="form-control"
+                          rows={3}
+                          placeholder="Enter description"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-lg-12 mb-3">
+                        <label className="form-label">Status</label>
+                        <select
+                          className="form-select"
+                          value={status}
+                          onChange={(e) => setStatus(e.target.value)}
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="modal-footer mt-4 pe-0 pb-0">
+                      <button
+                        type="button"
+                        className="btn me-2 btn-secondary fs-13 fw-medium p-2 px-3 shadow-none"
+                        data-bs-dismiss="modal"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary fs-13 fw-medium p-2 px-3"
+                        disabled={submitting}
+                      >
+                        {submitting ? "Adding..." : "Add Category"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
-
-              <div className="modal-footer border-0 pt-0">
-                <button
-                  type="button"
-                  className="btn btn-secondary px-4"
-                  style={{ backgroundColor: "#0b2545", borderColor: "#0b2545" }}
-                  data-bs-dismiss="modal"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary px-4"
-                  style={{ backgroundColor: "#ff6f28", borderColor: "#ff6f28" }}
-                  disabled={submitting}
-                >
-                  {submitting ? "Adding..." : "Add Category"}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
-      {/* ── End Modal ── */}
-    </div>
+    </>
   );
 };
 
