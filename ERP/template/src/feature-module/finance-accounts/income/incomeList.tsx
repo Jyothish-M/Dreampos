@@ -5,6 +5,8 @@ import SearchFromApi from "../../../components/data-table/search";
 import { useState, useEffect } from "react";
 import apiClient from "../../services/api.service";
 import moment from "moment";
+// @ts-ignore
+import html2pdf from "html2pdf.js";
 
 const IncomeList = () => {
   const [listData, setListData] = useState<any[]>([]);
@@ -102,12 +104,10 @@ const IncomeList = () => {
         amount: "",
         date: new Date().toISOString().split("T")[0],
       });
-      // Close modal
       const closeBtn = document.querySelector(
         "#add-income-modal .btn-close, #add-income-modal [data-bs-dismiss='modal']"
       ) as HTMLButtonElement;
       if (closeBtn) closeBtn.click();
-
       fetchIncomes();
     } catch (error: any) {
       alert(error?.response?.data?.message || "Failed to add income.");
@@ -125,6 +125,107 @@ const IncomeList = () => {
       } catch (error) {
         alert("Failed to delete income.");
       }
+    }
+  };
+
+  // Export to Excel / CSV
+  const handleExcelExport = () => {
+    if (!listData || listData.length === 0) {
+      alert("No income records found to export.");
+      return;
+    }
+    const headers = ["Date", "Reference", "Store", "Category", "Notes", "Amount"];
+    const rows = listData.map((item: any) => [
+      `"${item.date ? moment(item.date).format("DD MMM YYYY") : "-"}"`,
+      `"${item.reference || ""}"`,
+      `"${item.store || ""}"`,
+      `"${item.category || ""}"`,
+      `"${(item.notes || "").replace(/"/g, '""')}"`,
+      `"${Number(item.amount || 0).toFixed(2)}"`,
+    ]);
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Income_List_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export to PDF
+  const handlePdfExport = async () => {
+    if (!listData || listData.length === 0) {
+      alert("No income records found to export.");
+      return;
+    }
+    const rowsHtml = listData
+      .map(
+        (item: any, idx: number) => `
+        <tr style="border-bottom:1px solid #ddd;">
+          <td style="padding:8px;">${idx + 1}</td>
+          <td style="padding:8px;">${item.date ? moment(item.date).format("DD MMM YYYY") : "-"}</td>
+          <td style="padding:8px;font-weight:bold;color:#fe9f43;">${item.reference || "-"}</td>
+          <td style="padding:8px;">${item.store || "-"}</td>
+          <td style="padding:8px;">${item.category || "-"}</td>
+          <td style="padding:8px;">${item.notes || "-"}</td>
+          <td style="padding:8px;text-align:right;font-weight:bold;color:#28a745;">$${Number(item.amount || 0).toFixed(2)}</td>
+        </tr>
+      `
+      )
+      .join("");
+
+    const total = listData.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+
+    const tempDiv = document.createElement("div");
+    tempDiv.style.padding = "24px";
+    tempDiv.style.fontFamily = "Arial, sans-serif";
+    tempDiv.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #fe9f43;padding-bottom:12px;margin-bottom:18px;">
+        <div>
+          <h2 style="margin:0;color:#333;">DreamsPOS</h2>
+          <p style="margin:4px 0 0;color:#fe9f43;font-weight:bold;">Income List Report</p>
+          <p style="margin:2px 0 0;color:#777;font-size:11px;">Generated: ${new Date().toLocaleString()}</p>
+        </div>
+        <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:8px 14px;text-align:right;">
+          <p style="margin:0;font-size:11px;color:#6c757d;">Total Income</p>
+          <h3 style="margin:2px 0 0;color:#28a745;">$${total.toFixed(2)}</h3>
+          <p style="margin:2px 0 0;font-size:10px;color:#6c757d;">${listData.length} Records</p>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:#fe9f43;color:white;">
+            <th style="padding:10px 8px;text-align:left;">#</th>
+            <th style="padding:10px 8px;text-align:left;">Date</th>
+            <th style="padding:10px 8px;text-align:left;">Reference</th>
+            <th style="padding:10px 8px;text-align:left;">Store</th>
+            <th style="padding:10px 8px;text-align:left;">Category</th>
+            <th style="padding:10px 8px;text-align:left;">Notes</th>
+            <th style="padding:10px 8px;text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+    document.body.appendChild(tempDiv);
+    try {
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: `Income_Report_${new Date().toISOString().split("T")[0]}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+        })
+        .from(tempDiv)
+        .save();
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      document.body.removeChild(tempDiv);
     }
   };
 
@@ -196,7 +297,10 @@ const IncomeList = () => {
                 <h6>Manage your income records</h6>
               </div>
             </div>
-            <TableTopHead />
+            <TableTopHead
+              onPdfExport={handlePdfExport}
+              onExcelExport={handleExcelExport}
+            />
             <div className="page-btn">
               <Link
                 to="#"
@@ -259,7 +363,7 @@ const IncomeList = () => {
                     data-bs-dismiss="modal"
                     aria-label="Close"
                   >
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">x</span>
                   </button>
                 </div>
                 <div className="modal-body">
