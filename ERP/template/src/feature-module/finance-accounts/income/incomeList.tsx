@@ -1,4 +1,11 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+// @ts-ignore
+import html2pdf from "html2pdf.js";
+import { printer } from "../../../utils/imagepath";
+import TooltipIcons from "../../../components/tooltip-content/tooltipIcons";
+import RefreshIcon from "../../../components/tooltip-content/refresh";
+import CollapesIcon from "../../../components/tooltip-content/collapes";
 import apiClient from "../../services/api.service";
 
 const IncomeList = () => {
@@ -126,6 +133,126 @@ const IncomeList = () => {
     });
   };
 
+  // Refresh data
+  const handleRefresh = async () => {
+    await Promise.all([fetchIncomes(), fetchStores(), fetchCategories()]);
+  };
+
+  // Export to Excel / CSV
+  const handleExcelExport = () => {
+    if (!listData || listData.length === 0) {
+      alert("No income records found to export.");
+      return;
+    }
+    const headers = ["#", "Date", "Reference", "Store", "Category", "Notes", "Amount ($)"];
+    const rows = listData.map((item: any, idx: number) => [
+      idx + 1,
+      `"${formatDate(item.date)}"`,
+      `"${item.reference || ""}"`,
+      `"${item.store || ""}"`,
+      `"${item.category || ""}"`,
+      `"${(item.notes || "").replace(/"/g, '""')}"`,
+      `"${Number(item.amount || 0).toFixed(2)}"`,
+    ]);
+    const csvContent = [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Income_List_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export to PDF
+  const handlePdfExport = async () => {
+    if (!listData || listData.length === 0) {
+      alert("No income records found to export.");
+      return;
+    }
+
+    const rowsHtml = listData
+      .map(
+        (item: any, idx: number) => `
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 10px 8px;">${idx + 1}</td>
+          <td style="padding: 10px 8px;">${formatDate(item.date)}</td>
+          <td style="padding: 10px 8px; font-weight: bold; color: #fe9f43;">${item.reference || "-"}</td>
+          <td style="padding: 10px 8px;">${item.store || "-"}</td>
+          <td style="padding: 10px 8px;">${item.category || "-"}</td>
+          <td style="padding: 10px 8px;">${item.notes || "-"}</td>
+          <td style="padding: 10px 8px; text-align: right; font-weight: bold; color: #28a745;">$${Number(item.amount || 0).toFixed(2)}</td>
+        </tr>
+      `
+      )
+      .join("");
+
+    const totalAmount = listData.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+
+    const tempDiv = document.createElement("div");
+    tempDiv.style.padding = "24px";
+    tempDiv.style.fontFamily = "Arial, sans-serif";
+    tempDiv.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #fe9f43; padding-bottom: 12px; margin-bottom: 18px;">
+        <div>
+          <h2 style="margin: 0; color: #333; font-size: 24px;">DreamsPOS</h2>
+          <p style="margin: 4px 0 0; color: #fe9f43; font-weight: bold; font-size: 15px;">Income List Report</p>
+          <p style="margin: 2px 0 0; color: #777; font-size: 11px;">Generated: ${new Date().toLocaleString()}</p>
+        </div>
+        <div style="text-align: right;">
+          <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px 14px;">
+            <p style="margin: 0; font-size: 11px; color: #6c757d;">Total Income</p>
+            <h3 style="margin: 2px 0 0; color: #28a745; font-size: 18px;">$${totalAmount.toFixed(2)}</h3>
+            <p style="margin: 2px 0 0; font-size: 10px; color: #6c757d;">${listData.length} Records</p>
+          </div>
+        </div>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+          <tr style="background-color: #fe9f43; color: white;">
+            <th style="padding: 10px 8px; text-align: left;">#</th>
+            <th style="padding: 10px 8px; text-align: left;">Date</th>
+            <th style="padding: 10px 8px; text-align: left;">Reference</th>
+            <th style="padding: 10px 8px; text-align: left;">Store</th>
+            <th style="padding: 10px 8px; text-align: left;">Category</th>
+            <th style="padding: 10px 8px; text-align: left;">Notes</th>
+            <th style="padding: 10px 8px; text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    `;
+
+    document.body.appendChild(tempDiv);
+    try {
+      // @ts-ignore
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: `Income_Report_${new Date().toISOString().split("T")[0]}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+        })
+        .from(tempDiv)
+        .save();
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      window.print();
+    } finally {
+      document.body.removeChild(tempDiv);
+    }
+  };
+
+  // Print
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="page-wrapper">
       <div className="content">
@@ -139,21 +266,25 @@ const IncomeList = () => {
             </div>
           </div>
           <ul className="table-top-head">
+            <TooltipIcons
+              onPdfClick={handlePdfExport}
+              onExcelClick={handleExcelExport}
+            />
             <li>
-              <a data-bs-toggle="tooltip" title="Pdf">
-                <img src="/assets/img/icons/pdf.svg" alt="pdf" />
-              </a>
+              <Link
+                to="#"
+                data-pr-tooltip="Print"
+                data-pr-position="top"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePrint();
+                }}
+              >
+                <img src={printer} alt="print" />
+              </Link>
             </li>
-            <li>
-              <a data-bs-toggle="tooltip" title="Excel">
-                <img src="/assets/img/icons/excel.svg" alt="excel" />
-              </a>
-            </li>
-            <li>
-              <a data-bs-toggle="tooltip" title="Print">
-                <img src="/assets/img/icons/printer.svg" alt="print" />
-              </a>
-            </li>
+            <RefreshIcon onClick={handleRefresh} />
+            <CollapesIcon />
           </ul>
           <div className="page-btn">
             <button
