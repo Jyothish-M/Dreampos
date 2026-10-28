@@ -145,7 +145,15 @@ const ExpensesList = () => {
       alert("No expense records found to export.");
       return;
     }
-    const headers = ["Reference", "Expense Name", "Category", "Description", "Date", "Amount", "Status"];
+    const headers = [
+      "Reference",
+      "Expense Name",
+      "Category",
+      "Description",
+      "Date",
+      "Amount",
+      "Status",
+    ];
     const rowsList = listData.map((item: any) => [
       `"${item.reference || ""}"`,
       `"${(item.title || item.expenseName || "").replace(/"/g, '""')}"`,
@@ -155,12 +163,20 @@ const ExpensesList = () => {
       `"${Number(item.amount || 0).toFixed(2)}"`,
       `"${item.status || "Active"}"`,
     ]);
-    const csvContent = [headers.join(","), ...rowsList.map((r) => r.join(","))].join("\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const csvContent = [
+      headers.join(","),
+      ...rowsList.map((r) => r.join(",")),
+    ].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Expense_List_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `Expense_List_${new Date().toISOString().split("T")[0]}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -186,11 +202,14 @@ const ExpensesList = () => {
           <td style="padding: 8px; text-align: right; font-weight: bold; color: #dc3545;">$${Number(item.amount || 0).toFixed(2)}</td>
           <td style="padding: 8px;">${item.status || "Active"}</td>
         </tr>
-      `
+      `,
       )
       .join("");
 
-    const total = listData.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+    const total = listData.reduce(
+      (sum: number, item: any) => sum + Number(item.amount || 0),
+      0,
+    );
 
     const tempDiv = document.createElement("div");
     tempDiv.style.padding = "24px";
@@ -365,7 +384,9 @@ const ExpensesList = () => {
             <div className="card-body pb-0">
               <div className="table-responsive">
                 {loading ? (
-                  <div className="p-4 text-center">Loading from database...</div>
+                  <div className="p-4 text-center">
+                    Loading from database...
+                  </div>
                 ) : (
                   <PrimeDataTable
                     column={columns}
@@ -404,7 +425,7 @@ const ExpensesList = () => {
                     aria-label="Close"
                     ref={closeBtnRef}
                   >
-                    <span aria-hidden="true">×</span>
+                    <i className="ti ti-x" />
                   </button>
                 </div>
                 <div className="modal-body">
@@ -412,7 +433,8 @@ const ExpensesList = () => {
                     <div className="row">
                       <div className="col-lg-12 mb-3">
                         <label className="form-label">
-                          Expense Name <span className="text-danger ms-1">*</span>
+                          Expense Name{" "}
+                          <span className="text-danger ms-1">*</span>
                         </label>
                         <input
                           type="text"
@@ -434,7 +456,10 @@ const ExpensesList = () => {
                           className="form-select"
                           value={formData.category}
                           onChange={(e) =>
-                            setFormData({ ...formData, category: e.target.value })
+                            setFormData({
+                              ...formData,
+                              category: e.target.value,
+                            })
                           }
                         >
                           {categories.length === 0 ? (
@@ -499,7 +524,8 @@ const ExpensesList = () => {
 
                       <div className="col-lg-12 mb-3">
                         <label className="form-label">
-                          Description <span className="text-danger ms-1">*</span>
+                          Description{" "}
+                          <span className="text-danger ms-1">*</span>
                         </label>
                         <textarea
                           className="form-control"
@@ -508,7 +534,10 @@ const ExpensesList = () => {
                           required
                           value={formData.description}
                           onChange={(e) =>
-                            setFormData({ ...formData, description: e.target.value })
+                            setFormData({
+                              ...formData,
+                              description: e.target.value,
+                            })
                           }
                         />
                       </div>

@@ -285,7 +285,7 @@ const IncomeCategory = () => {
                     data-bs-dismiss="modal"
                     aria-label="Close"
                   >
-                    <span aria-hidden="true">×</span>
+                    <i className="ti ti-x" />
                   </button>
                 </div>
                 <div className="modal-body">

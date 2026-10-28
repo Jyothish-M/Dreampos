@@ -363,7 +363,7 @@ const IncomeList = () => {
                     data-bs-dismiss="modal"
                     aria-label="Close"
                   >
-                    <span aria-hidden="true">x</span>
+                    <i className="ti ti-x" />
                   </button>
                 </div>
                 <div className="modal-body">
