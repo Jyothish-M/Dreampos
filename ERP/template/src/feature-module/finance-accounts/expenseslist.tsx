@@ -420,12 +420,12 @@ const ExpensesList = () => {
                   </div>
                   <button
                     type="button"
-                    className="close btn-close"
+                    className="close bg-danger text-white fs-16"
                     data-bs-dismiss="modal"
                     aria-label="Close"
                     ref={closeBtnRef}
                   >
-                    <i className="ti ti-x" />
+                    <i className="ti ti-x fs-12" />
                   </button>
                 </div>
                 <div className="modal-body">
